@@ -1,78 +1,140 @@
+// package com.driver;
+
+// import java.util.List;
+// import java.util.Objects;
+
+// import org.springframework.beans.factory.annotation.Autowired;
+// import org.springframework.stereotype.Service;
+
+// @Service
+// public class MovieService {
+
+//     // @Autowired
+//     // MovieRepository movieRepository;
+//     MovieRepository movieRepository = new MovieRepository();
+
+//     public void movieAdded(Movie movie) {
+//         movieRepository.movieAdd(movie);
+//     }
+
+//     public void directorAdded(Director director) {
+//         movieRepository.directorAdd(director);
+//     }
+
+//     public void movieDirectorPairAdded(String movieName, String directorName) {
+//         if (Objects.nonNull(movieRepository.findMovie(movieName))
+//                 && Objects.nonNull(movieRepository.findDirector(directorName))) {
+//             movieRepository.movieDirectorPairAdd(movieName, directorName);
+//         }
+//         movieRepository.movieDirectorPairAdd(movieName, directorName);
+//     }
+
+//     public Movie movidFind(String name) {
+//         return movieRepository.findMovie(name);
+//     }
+
+//     public Director directorFind(String name) {
+//         return movieRepository.findDirector(name);
+//     }
+
+//     public List<String> findMoviesFromDirector(String director) {
+//         return movieRepository.moviesFromDirectorFind(director);
+//     }
+
+//     public List<String> findMoviesAll() {
+//         return movieRepository.allMoviesFind();
+//     }
+
+//     public void deleteDirector_ByName(String name) {
+//         List<String> moviesToDelete = movieRepository.moviesFromDirectorFind(name);
+//         movieRepository.removeDirector(name);
+//         for (String movieName : moviesToDelete) {
+//             movieRepository.removeMovie(movieName);
+//         }
+//     }
+
+//     public void allDeleteDirector() {
+//         List<String> director = movieRepository.getAllDirector();
+//         for (String directorName : director) {
+//             deleteDirector_ByName(directorName);
+//         }
+//     }
+
+// }
+
 package com.driver;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
-@Service
 public class MovieService {
-
-    @Autowired
-    private MovieRepository movieRepository;
-
-    public String addMovie(Movie movie) {
-        movieRepository.addMovie(movie);
-        return "Movie added successfully";
-    }
-
-    public String addDirector(Director director) {
-        movieRepository.addDirector(director);
-        return "Director added successfully";
-    }
-
-    public String addMovieDirectorPair(String movieName, String directorName) {
-        Movie movie = movieRepository.getMovieByName(movieName);
-        Director director = movieRepository.getDirectorByName(directorName);
-
-        if (movie == null) {
-            return "Movie with name " + movieName + " not found";
+    MovieRepository repo = new MovieRepository();
+    public boolean addMovie(Movie movie) throws movieAlredyPresentException {
+        Optional<Movie> opt = repo.ischeckmovie(movie.getName());
+        if(opt.isPresent()){
+            throw new movieAlredyPresentException();
         }
+        return repo.addMovie(movie);
+    }
 
-        if (director == null) {
-            return "Director with name " + directorName + " not found";
+    public boolean addDirector(Director director) throws directorAlreadyPresent {
+        Optional<Director> opt = repo.ischeckdirector(director.getName());
+        if(opt.isPresent()){
+            throw new directorAlreadyPresent();
         }
-
-        movieRepository.addMovieDirectorPair(movieName, directorName);
-
-        return "Movie-Director pair added successfully";
+        return repo.addDirector(director);
     }
 
-    public Movie getMovieByName(String name) {
-        return movieRepository.getMovieByName(name);
+    public boolean addMovieDirectorPair(String moviename, String directorname) throws MovieOrDirectornotpresentException {
+        Optional<Movie> optm = repo.ischeckmovie(moviename);
+        Optional<Director> optd = repo.ischeckdirector(directorname);
+        if(optm.isEmpty() || optd.isEmpty()){
+            throw new MovieOrDirectornotpresentException();
+        }
+        return repo.addMovieDirectorPair(moviename,directorname);
     }
 
+    public Movie getMovieByName(String moviename) {
+        Optional<Movie> m = repo.ischeckmovie(moviename);
+        if(m.isPresent()){
+            return m.get();
+        }
+        return new Movie();
+    }
     public Director getDirectorByName(String name) {
-        return movieRepository.getDirectorByName(name);
+        Optional<Director> m = repo.ischeckdirector(name);
+        if(m.isPresent()){
+            return m.get();
+        }
+        return new Director();
     }
 
-    public List<String> getMoviesByDirectorName(String directorName) {
-        if (movieRepository.getDirectorByName(directorName) == null) {
-            return new ArrayList<>();
-        }
-
-        return movieRepository.getMoviesByDirectorName(directorName);
+    public List<String> getMoviesByDirectorName(String name) {
+        List<String> movies = repo.getMoviesByDirectorName(name);
+        return movies;
     }
 
     public List<String> findAllMovies() {
-        return movieRepository.findAllMovies();
+        List<String> m = repo.findAllMovies();
+        return m;
     }
 
-    public String deleteDirectorByName(String name) {
-        Director director = movieRepository.getDirectorByName(name);
-
-        if (director == null) {
-            return "Director with name " + name + " not found";
+    public void deleteDirectorByName(String director) {
+        List<String> movies = repo.getMoviesByDirectorName(director);
+        repo.deletedirector(director);
+        for(String x:movies){
+            repo.deletemovies(x);
         }
-
-        movieRepository.deleteDirectorAndTheirMovies(name);
-        return "Director and all associated movies deleted successfully";
+    }
+    public void deleteAllDirector() {
+        List<String> dir = repo.getallDirector();
+        for(String x:dir){
+            List<String> mo = repo.getMoviesByDirectorName(x);
+            repo.deletedirector(x);
+            for(String y :mo){
+                repo.deletemovies(y);
+            }
+        }
     }
 
-    public String deleteAllDirectors() {
-        movieRepository.deleteAllDirector();
-        return "All directors and their associated movies deleted successfully";
-    }
 }
+
